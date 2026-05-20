@@ -15,7 +15,6 @@ def add_student(db: Session, name: str, marks: int):
 
     return student
 
-
 # READ
 def get_students(db: Session):
 
@@ -56,3 +55,17 @@ def delete_student(db: Session, name: str):
     return {
         "message": "Deleted"
     }
+
+def delete_student_by_id(db, student_id):
+
+    student = db.query(Student).filter(
+        Student.id == student_id
+    ).first()
+
+    if student:
+
+        db.delete(student)
+
+        db.commit()
+
+    return student

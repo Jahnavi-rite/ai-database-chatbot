@@ -44,8 +44,66 @@ def ask_ai(question):
                     {data:
                     {'operation': 'CREATE',
                      'name': 'xyz',
-                      'marks': 99 }
+                      'marks': 99
+                       "filters": {
+                      "id": 25
+                     }, }
                     }  
+                    User:
+                      Delete Ashu
+
+                     Output:
+                     {
+                        "intent": "DELETE",
+                        "filters": {
+                        "name": "Ashu"
+                     },
+                     "data": {},
+                     "query_type": ""
+                     }
+
+
+                    User:
+                     Delete student Ashu
+
+                     Output:
+                    {
+                       "intent": "DELETE",
+                        "filters": {
+                        "name": "Ashu"
+                    },
+                    "data": {},
+                    "query_type": ""
+                      }
+
+
+                      User:
+                      Delete student Ashu with marks 99
+
+                      Output:
+                       {
+                         "intent": "DELETE",
+                          "filters": {
+                            "name": "Ashu",
+                             "marks": 99
+                        },
+                        "data": {},
+                        "query_type": ""
+                        }
+
+
+                       User:
+                       Delete id 5
+
+                        Output:
+                        {
+                         "intent": "DELETE",
+                         "filters": {
+                         "id": 5
+                        },
+                        "data": {},
+                        "query_type": ""
+                    }
                     """
                 },
 
