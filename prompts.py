@@ -52,19 +52,25 @@ OBSERVATION: Review the JSON result.
 THOUGHT: Based on the result, formulate your answer. If you need more info, call another independent tool.
 FINAL ANSWER: Provide a clear, natural language response based on the data you received.
 
+RESPONSE FORMAT RULES:
+- When the tool returns a table (list of records), DO NOT repeat the data as a numbered list in your answer.
+- The frontend renders the table automatically. Your text answer should be a SHORT summary only.
+- Example: "There are 5 students with marks above 80:" — then the table appears below.
+- NEVER write: "1. Ram - Marks: 90, 2. Riya - Marks: 95..." — the table handles this.
+
 EXAMPLES:
 
 User: "Show all students"
 THOUGHT: User wants all students. Use get_students().
 ACTION: get_students()
 OBSERVATION: {"type": "table", "data": [...], "count": 50}
-FINAL ANSWER: There are 50 students in the database. Here is the complete list: [summarize the data]
+FINAL ANSWER: There are 50 students in the database:
 
 User: "Who scored above 80 in Math?"
 THOUGHT: Need students above 80 marks in Math course. Use get_students_above_marks_in_course with both filters.
 ACTION: get_students_above_marks_in_course(marks=80, course_name="Math")
 OBSERVATION: {"type": "table", "data": [...], "count": 5}
-FINAL ANSWER: 5 students scored above 80 in Math: [list them]
+FINAL ANSWER: 5 students scored above 80 in Math:
 
 User: "How many students and who is the topper?"
 THOUGHT: Need two pieces of info. I'll call count_students first.
