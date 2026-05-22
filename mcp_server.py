@@ -250,13 +250,13 @@ def get_students_with_courses() -> str:
     db = SessionLocal()
     try:
         results = db.query(
-            Student.id, Student.name, Student.marks, Course.course_name
+            Student.id, Student.name, Student.marks, Student.course_id, Course.course_name
         ).join(Course, Student.course_id == Course.id).all()
         return _json_response({
             "type": "table",
             "title": "Students With Courses",
             "data": [
-                {"id": r.id, "name": r.name, "marks": r.marks, "course_name": r.course_name}
+                {"id": r.id, "name": r.name, "marks": r.marks, "course_id": r.course_id, "course_name": r.course_name}
                 for r in results
             ],
             "count": len(results)
@@ -271,13 +271,13 @@ def get_students_with_teachers() -> str:
     db = SessionLocal()
     try:
         results = db.query(
-            Student.id, Student.name, Student.marks, Course.course_name, Teacher.teacher_name
+            Student.id, Student.name, Student.marks, Student.course_id, Course.course_name, Teacher.teacher_name
         ).join(Course, Student.course_id == Course.id).join(Teacher, Course.teacher_id == Teacher.id).all()
         return _json_response({
             "type": "table",
             "title": "Students With Teachers",
             "data": [
-                {"id": r.id, "name": r.name, "marks": r.marks, "course_name": r.course_name, "teacher_name": r.teacher_name}
+                {"id": r.id, "name": r.name, "marks": r.marks, "course_id": r.course_id, "course_name": r.course_name, "teacher_name": r.teacher_name}
                 for r in results
             ],
             "count": len(results)
