@@ -369,6 +369,27 @@ def search_student(name: str) -> str:
 
 
 @mcp.tool()
+def get_student_with_teacher(name: str) -> str:
+    """Get a specific student with their course and teacher info. Parameter: name (string). Use this when asked about a specific student's teacher or course."""
+    db = SessionLocal()
+    try:
+        result = db.query(
+            Student.id, Student.name, Student.marks, Student.course_id, Course.course_name, Teacher.teacher_name
+        ).join(Course, Student.course_id == Course.id).join(Teacher, Course.teacher_id == Teacher.id).filter(Student.name.ilike(f"%{name}%")).all()
+        return _json_response({
+            "type": "table",
+            "title": f"Student: {name}",
+            "data": [
+                {"id": r.id, "name": r.name, "marks": r.marks, "course_id": r.course_id, "course_name": r.course_name, "teacher_name": r.teacher_name}
+                for r in result
+            ],
+            "count": len(result)
+        })
+    finally:
+        db.close()
+
+
+@mcp.tool()
 def get_students_above_marks_in_course(marks: int, course_name: str) -> str:
     """Get students above a marks threshold in a specific course. Parameters: marks (integer), course_name (string)."""
     db = SessionLocal()
