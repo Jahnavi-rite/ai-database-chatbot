@@ -1,59 +1,118 @@
-from fastapi import FastAPI
-
-from database import engine, SessionLocal
-
-from models import Base
-
-from crud import *
-
-from ai import ask_ai
-
-import json
-
-import logging
-
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+import logging
+import time
+import uuid
 
+from sqlalchemy import text
+from database import engine, SessionLocal
+from models import Base
+from agent import DatabaseAgent
 
 # ==========================================
 # LOGGING
 # ==========================================
 
 logging.basicConfig(level=logging.INFO)
-
 logger = logging.getLogger(__name__)
-
-
-# ==========================================
-# FASTAPI APP
-# ==========================================
-
-app = FastAPI()
-
-
-# ==========================================
-# CORS
-# ==========================================
-
-app.add_middleware(
-
-    CORSMiddleware,
-
-    allow_origins=["*"],
-
-    allow_credentials=True,
-
-    allow_methods=["*"],
-
-    allow_headers=["*"],
-)
-
 
 # ==========================================
 # CREATE TABLES
 # ==========================================
 
 Base.metadata.create_all(bind=engine)
+
+# ==========================================
+# AGENT MANAGER (handles multiple conversations)
+# ==========================================
+
+MAX_CONVERSATIONS = 100
+_agent_instances: Dict[str, tuple] = {}
+
+
+def _evict_stale_agents() -> None:
+    """Remove the oldest conversation when the limit is reached."""
+    if len(_agent_instances) <= MAX_CONVERSATIONS:
+        return
+    oldest_key = min(_agent_instances, key=lambda k: _agent_instances[k][1])
+    logger.info(f"Evicting stale conversation {oldest_key}")
+    del _agent_instances[oldest_key]
+
+
+def get_or_create_agent(conversation_id: Optional[str] = None) -> tuple:
+    if conversation_id and conversation_id in _agent_instances:
+        agent, _ = _agent_instances[conversation_id]
+        _agent_instances[conversation_id] = (agent, time.time())
+        return agent, conversation_id
+
+    new_id = conversation_id or str(uuid.uuid4())
+    logger.info(f"Initializing DatabaseAgent for conversation {new_id}...")
+    agent = DatabaseAgent()
+    logger.info(f"Agent ready with {len(agent.tools)} tools")
+    _evict_stale_agents()
+    _agent_instances[new_id] = (agent, time.time())
+    return agent, new_id
+
+
+# ==========================================
+# LIFESPAN
+# ==========================================
+
+@asynccontextmanager
+async def lifespan(app):
+    logger.info("AI Database Chatbot v3.0 starting up...")
+    logger.info("MCP tools available: 25+")
+    logger.info("Agent: LangGraph ReAct with GPT-4o-mini via OpenRouter")
+    logger.info("Multi-step orchestration enabled")
+    yield
+    _agent_instances.clear()
+    logger.info("Shutting down, cleared all agent instances.")
+
+
+# ==========================================
+# FASTAPI APP
+# ==========================================
+
+app = FastAPI(title="AI Database Chatbot", version="3.0.0", lifespan=lifespan)
+
+# ==========================================
+# CORS
+# ==========================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ==========================================
+# PYDANTIC MODELS
+# ==========================================
+
+class ChatRequest(BaseModel):
+    question: str = Field(..., min_length=1, description="The user's question about the database")
+    conversation_id: Optional[str] = Field(None, description="Optional conversation ID for maintaining context")
+
+class ChatResponse(BaseModel):
+    answer: str
+    structured_data: List[Dict[str, Any]]
+    steps: List[Dict[str, Any]]
+    conversation_id: str
+
+class MessageHistory(BaseModel):
+    conversation_id: str
 
 
 # ==========================================
@@ -62,930 +121,77 @@ Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 async def home():
+    return {
+        "message": "AI Database Chatbot v3.0 - LangGraph Multi-Step Agent + MCP",
+        "version": "3.0.0",
+        "endpoints": {
+            "chat": "POST /chat - Ask any question about the database",
+            "health": "GET /health - Check if the server is running",
+            "conversations": "GET /conversations/{conversation_id} - Get conversation history",
+        }
+    }
+
+
+@app.get("/health")
+async def health():
+    db_ok = False
+    db = None
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception as e:
+        logger.warning(f"Health check DB probe failed: {e}")
+    finally:
+        if db:
+            try:
+                db.close()
+            except Exception:
+                pass
 
     return {
+        "status": "ok" if db_ok else "degraded",
+        "database": "connected" if db_ok else "unavailable",
+    }
 
-        "message": "AI Database Chatbot Running"
+
+@app.get("/conversations/{conversation_id}")
+async def get_conversation(conversation_id: str):
+    entry = _agent_instances.get(conversation_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    agent, _ = entry
+    return {
+        "conversation_id": conversation_id,
+        "message_count": len(agent.memory),
+        "messages": agent.memory,
     }
 
 
 # ==========================================
-# STUDENTS
+# CHAT - Main AI endpoint
 # ==========================================
 
-@app.get("/students")
-async def read_students():
-
-    db = SessionLocal()
-
-    students = get_students(db)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks,
-            "course_id": s.course_id
-        }
-
-        for s in students
-    ]
-
-
-# ==========================================
-# TEACHERS
-# ==========================================
-
-@app.get("/teachers")
-async def read_teachers():
-
-    db = SessionLocal()
-
-    teachers = get_teachers(db)
-
-    return [
-
-        {
-            "id": t.id,
-            "teacher_name": t.teacher_name
-        }
-
-        for t in teachers
-    ]
-
-
-# ==========================================
-# COURSES
-# ==========================================
-
-@app.get("/courses")
-async def read_courses():
-
-    db = SessionLocal()
-
-    courses = get_courses(db)
-
-    return [
-
-        {
-            "id": c.id,
-            "course_name": c.course_name,
-            "teacher_id": c.teacher_id
-        }
-
-        for c in courses
-    ]
-
-
-# ==========================================
-# ANALYTICS
-# ==========================================
-
-@app.get("/analytics/count-students")
-async def count_students_api():
-
-    db = SessionLocal()
-
-    return [
-
-        {
-            "total_students": count_students(db)
-        }
-    ]
-
-
-@app.get("/analytics/count-teachers")
-async def count_teachers_api():
-
-    db = SessionLocal()
-
-    return [
-
-        {
-            "total_teachers": count_teachers(db)
-        }
-    ]
-
-
-@app.get("/analytics/count-courses")
-async def count_courses_api():
-
-    db = SessionLocal()
-
-    return [
-
-        {
-            "total_courses": count_courses(db)
-        }
-    ]
-
-
-@app.get("/analytics/topper")
-async def topper_api():
-
-    db = SessionLocal()
-
-    students = get_topper(db)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks
-        }
-
-        for s in students
-    ]
-
-
-@app.get("/analytics/lowest")
-async def lowest_api():
-
-    db = SessionLocal()
-
-    students = get_lowest_student(db)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks
-        }
-
-        for s in students
-    ]
-
-
-@app.get("/analytics/average-marks")
-async def average_marks_api():
-
-    db = SessionLocal()
-
-    return [
-
-        {
-            "average_marks": average_marks(db)
-        }
-    ]
-
-
-@app.get("/analytics/max-marks")
-async def max_marks_api():
-
-    db = SessionLocal()
-
-    return [
-
-        {
-            "maximum_marks": maximum_marks(db)
-        }
-    ]
-
-
-@app.get("/analytics/min-marks")
-async def min_marks_api():
-
-    db = SessionLocal()
-
-    return [
-
-        {
-            "minimum_marks": minimum_marks(db)
-        }
-    ]
-
-
-# ==========================================
-# JOINS
-# ==========================================
-
-@app.get("/joins/students-teachers")
-async def students_teachers_join():
-
-    db = SessionLocal()
-
-    results = get_students_courses_teachers(db)
-
-    return [
-
-        {
-            "id": r.id,
-            "name": r.name,
-            "marks": r.marks,
-            "course_name": r.course_name,
-            "teacher_name": r.teacher_name
-        }
-
-        for r in results
-    ]
-
-
-@app.get("/joins/students-courses")
-async def students_courses_join():
-
-    db = SessionLocal()
-
-    results = get_students_with_courses(db)
-
-    return [
-
-        {
-            "id": r.id,
-            "name": r.name,
-            "marks": r.marks,
-            "course_name": r.course_name
-        }
-
-        for r in results
-    ]
-
-
-@app.get("/joins/courses-teachers")
-async def courses_teachers_join():
-
-    db = SessionLocal()
-
-    results = get_courses_with_teachers(db)
-
-    return [
-
-        {
-            "id": r.id,
-            "course_name": r.course_name,
-            "teacher_name": r.teacher_name
-        }
-
-        for r in results
-    ]
-
-
-# ==========================================
-# FILTERS
-# ==========================================
-
-@app.get("/filters/students-above-marks")
-async def students_above_marks(marks: int):
-
-    db = SessionLocal()
-
-    students = get_students_above_marks(db, marks)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks
-        }
-
-        for s in students
-    ]
-
-
-@app.get("/filters/students-below-marks")
-async def students_below_marks(marks: int):
-
-    db = SessionLocal()
-
-    students = get_students_below_marks(db, marks)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks
-        }
-
-        for s in students
-    ]
-
-
-@app.get("/filters/search-student")
-async def search_student(name: str):
-
-    db = SessionLocal()
-
-    students = search_student_by_name(db, name)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks
-        }
-
-        for s in students
-    ]
-
-
-# ==========================================
-# SORTING
-# ==========================================
-
-@app.get("/sort/students-marks")
-async def sort_students_marks():
-
-    db = SessionLocal()
-
-    students = get_students_sorted_by_marks(db)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks
-        }
-
-        for s in students
-    ]
-
-
-@app.get("/sort/students-highest")
-async def sort_students_highest():
-
-    db = SessionLocal()
-
-    students = get_students_highest_first(db)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks
-        }
-
-        for s in students
-    ]
-
-
-@app.get("/sort/students-name")
-async def sort_students_name():
-
-    db = SessionLocal()
-
-    students = get_students_alphabetically(db)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks
-        }
-
-        for s in students
-    ]
-
-
-# ==========================================
-# PAGINATION
-# ==========================================
-
-@app.get("/pagination/first-five-students")
-async def first_five_students():
-
-    db = SessionLocal()
-
-    students = get_first_five_students(db)
-
-    return [
-
-        {
-            "id": s.id,
-            "name": s.name,
-            "marks": s.marks
-        }
-
-        for s in students
-    ]
-
-
-# ==========================================
-# GROUP BY
-# ==========================================
-
-@app.get("/group/students-per-course")
-async def students_group_course():
-
-    db = SessionLocal()
-
-    results = students_per_course(db)
-
-    return [
-
-        {
-            "course_name": r.course_name,
-            "total_students": r.total_students
-        }
-
-        for r in results
-    ]
-
-
-# ==========================================
-# AI CHAT ROUTE
-# ==========================================
-
-@app.get("/chat/{question}")
-async def chat(question: str):
-
-    db = SessionLocal()
-
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """
+    Ask any question about the student database.
+    The LangGraph agent will understand natural language,
+    call MCP tools multiple times if needed, and return a structured response.
+    """
     try:
-
-        ai_response = ask_ai(question)
-
-        content = ai_response["choices"][0]["message"]["content"]
-
-        print(content)
-
-        content = content.replace("```json", "")
-
-        content = content.replace("```", "")
-
-        action = json.loads(content)
-
-        print(action)
-
-        api_calls = action.get("api_calls", [])
-
-        final_results = {
-
-            "results": []
-        }
-
-
-        for call in api_calls:
-
-            endpoint = call.get("endpoint")
-
-            params = call.get("params", {})
-
-
-            # ==================================
-            # STUDENTS
-            # ==================================
-
-            if endpoint == "/students":
-
-                students = get_students(db)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Students",
-
-                    "type": "table",
-
-                    "count": len(students),
-
-                    "data": [
-
-                        {
-                            "id": s.id,
-                            "name": s.name,
-                            "marks": s.marks,
-                            "course_id": s.course_id
-                        }
-
-                        for s in students
-                    ]
-                })
-
-
-            # ==================================
-            # TEACHERS
-            # ==================================
-
-            elif endpoint == "/teachers":
-
-                teachers = get_teachers(db)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Teachers",
-
-                    "type": "table",
-
-                    "count": len(teachers),
-
-                    "data": [
-
-                        {
-                            "id": t.id,
-                            "teacher_name": t.teacher_name
-                        }
-
-                        for t in teachers
-                    ]
-                })
-
-
-            # ==================================
-            # COURSES
-            # ==================================
-
-            elif endpoint == "/courses":
-
-                courses = get_courses(db)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Courses",
-
-                    "type": "table",
-
-                    "count": len(courses),
-
-                    "data": [
-
-                        {
-                            "id": c.id,
-                            "course_name": c.course_name,
-                            "teacher_id": c.teacher_id
-                        }
-
-                        for c in courses
-                    ]
-                })
-
-
-            # ==================================
-            # STUDENTS + TEACHERS JOIN
-            # ==================================
-
-            elif endpoint == "/joins/students-teachers":
-
-                results = get_students_courses_teachers(db)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Students With Teachers",
-
-                    "type": "table",
-
-                    "count": len(results),
-
-                    "data": [
-
-                        {
-                            "id": r.id,
-                            "name": r.name,
-                            "marks": r.marks,
-                            "course_name": r.course_name,
-                            "teacher_name": r.teacher_name
-                        }
-
-                        for r in results
-                    ]
-                })
-
-
-            # ==================================
-            # STUDENTS + COURSES JOIN
-            # ==================================
-
-            elif endpoint == "/joins/students-courses":
-
-                results = get_students_with_courses(db)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Students With Courses",
-
-                    "type": "table",
-
-                    "count": len(results),
-
-                    "data": [
-
-                        {
-                            "id": r.id,
-                            "name": r.name,
-                            "marks": r.marks,
-                            "course_name": r.course_name
-                        }
-
-                        for r in results
-                    ]
-                })
-
-
-            # ==================================
-            # COURSES + TEACHERS JOIN
-            # ==================================
-
-            elif endpoint == "/joins/courses-teachers":
-
-                results = get_courses_with_teachers(db)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Courses With Teachers",
-
-                    "type": "table",
-
-                    "count": len(results),
-
-                    "data": [
-
-                        {
-                            "id": r.id,
-                            "course_name": r.course_name,
-                            "teacher_name": r.teacher_name
-                        }
-
-                        for r in results
-                    ]
-                })
-
-
-            # ==================================
-            # COUNT STUDENTS
-            # ==================================
-
-            elif endpoint == "/analytics/count-students":
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Student Count",
-
-                    "type": "analytics",
-
-                    "data": [
-
-                        {
-                            "total_students": count_students(db)
-                        }
-                    ]
-                })
-
-
-            # ==================================
-            # COUNT TEACHERS
-            # ==================================
-
-            elif endpoint == "/analytics/count-teachers":
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Teacher Count",
-
-                    "type": "analytics",
-
-                    "data": [
-
-                        {
-                            "total_teachers": count_teachers(db)
-                        }
-                    ]
-                })
-
-
-            # ==================================
-            # COUNT COURSES
-            # ==================================
-
-            elif endpoint == "/analytics/count-courses":
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Course Count",
-
-                    "type": "analytics",
-
-                    "data": [
-
-                        {
-                            "total_courses": count_courses(db)
-                        }
-                    ]
-                })
-
-
-            # ==================================
-            # TOPPER
-            # ==================================
-
-            elif endpoint == "/analytics/topper":
-
-                topper = get_topper(db)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Topper",
-
-                    "type": "table",
-
-                    "count": len(topper),
-
-                    "data": [
-
-                        {
-                            "id": s.id,
-                            "name": s.name,
-                            "marks": s.marks
-                        }
-
-                        for s in topper
-                    ]
-                })
-
-
-            # ==================================
-            # LOWEST
-            # ==================================
-
-            elif endpoint == "/analytics/lowest":
-
-                students = get_lowest_student(db)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Lowest Marks Students",
-
-                    "type": "table",
-
-                    "count": len(students),
-
-                    "data": [
-
-                        {
-                            "id": s.id,
-                            "name": s.name,
-                            "marks": s.marks
-                        }
-
-                        for s in students
-                    ]
-                })
-
-
-            # ==================================
-            # FILTER ABOVE MARKS
-            # ==================================
-
-            elif endpoint == "/filters/students-above-marks":
-
-                marks = params.get("marks")
-
-                students = get_students_above_marks(db, marks)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": f"Students Above {marks}",
-
-                    "type": "table",
-
-                    "count": len(students),
-
-                    "data": [
-
-                        {
-                            "id": s.id,
-                            "name": s.name,
-                            "marks": s.marks
-                        }
-
-                        for s in students
-                    ]
-                })
-
-
-            # ==================================
-            # FILTER BELOW MARKS
-            # ==================================
-
-            elif endpoint == "/filters/students-below-marks":
-
-                marks = params.get("marks")
-
-                students = get_students_below_marks(db, marks)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": f"Students Below {marks}",
-
-                    "type": "table",
-
-                    "count": len(students),
-
-                    "data": [
-
-                        {
-                            "id": s.id,
-                            "name": s.name,
-                            "marks": s.marks
-                        }
-
-                        for s in students
-                    ]
-                })
-
-
-            # ==================================
-            # SEARCH STUDENT
-            # ==================================
-
-            elif endpoint == "/filters/search-student":
-
-                name = params.get("name")
-
-                students = search_student_by_name(db, name)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": f"Search Results for {name}",
-
-                    "type": "table",
-
-                    "count": len(students),
-
-                    "data": [
-
-                        {
-                            "id": s.id,
-                            "name": s.name,
-                            "marks": s.marks
-                        }
-
-                        for s in students
-                    ]
-                })
-
-
-            # ==================================
-            # GROUP BY
-            # ==================================
-
-            elif endpoint == "/group/students-per-course":
-
-                results = students_per_course(db)
-
-                final_results["results"].append({
-
-                    "endpoint": endpoint,
-
-                    "title": "Students Per Course",
-
-                    "type": "table",
-
-                    "count": len(results),
-
-                    "data": [
-
-                        {
-                            "course_name": r.course_name,
-                            "total_students": r.total_students
-                        }
-
-                        for r in results
-                    ]
-                })
-
-
-        return final_results
-
+        agent, conversation_id = get_or_create_agent(request.conversation_id)
+        logger.info(f"[{conversation_id}] User question: {request.question}")
+
+        result = agent.run(request.question)
+
+        return ChatResponse(
+            answer=result["answer"],
+            structured_data=result["structured_data"],
+            steps=result["steps"],
+            conversation_id=conversation_id,
+        )
 
     except Exception as e:
-
-        print("ERROR:", e)
-
-        return {
-
-            "error": str(e)
-        }
+        logger.error(f"Error processing question: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
