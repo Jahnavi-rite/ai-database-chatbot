@@ -170,7 +170,7 @@ class DatabaseAgent:
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY not set in environment")
 
-        self.model = "openai/gpt-oss-20b:free"
+        self.model = "nvidia/nemotron-3-super-120b-a12b:free"
         self.llm = self._create_llm(self.api_key)
 
         self.tools = MCPToolWrapper().get_langchain_tools()
