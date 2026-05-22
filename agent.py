@@ -164,13 +164,20 @@ class MCPToolWrapper:
 class DatabaseAgent:
     """Multi-step agentic framework for database queries using LangGraph."""
 
+    FALLBACK_MODELS = [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "openai/gpt-oss-20b:free",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "arcee-ai/trinity-large-thinking:free",
+    ]
+
     def __init__(self):
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         self.fallback_key = os.getenv("OPENROUTER_FALLBACK_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY not set in environment")
 
-        self.model = "nvidia/nemotron-3-super-120b-a12b:free"
+        self.model = self.FALLBACK_MODELS[0]
         self.llm = self._create_llm(self.api_key)
 
         self.tools = MCPToolWrapper().get_langchain_tools()
@@ -209,16 +216,47 @@ class DatabaseAgent:
 
         messages.append(HumanMessage(content=question))
 
-        try:
-            result = self.agent_graph.invoke({"messages": messages}, {"recursion_limit": 10})
-        except Exception as e:
-            if self.fallback_key and ("429" in str(e) or "rate" in str(e).lower()):
-                logger.warning("Primary API key rate limited, switching to fallback key")
-                self.llm = self._create_llm(self.fallback_key)
+        result = None
+        last_error = None
+
+        # Try primary key with all fallback models
+        for model in self.FALLBACK_MODELS:
+            try:
+                self.model = model
+                self.llm = self._create_llm(self.api_key)
                 self._setup_agent()
                 result = self.agent_graph.invoke({"messages": messages}, {"recursion_limit": 10})
-            else:
-                raise
+                break
+            except Exception as e:
+                last_error = e
+                err_str = str(e).lower()
+                if "429" in str(e) or "rate" in err_str or "insufficient" in err_str:
+                    logger.warning(f"Model {model} rate limited, trying next...")
+                    continue
+                else:
+                    raise
+
+        # If all primary key models failed, try fallback key
+        if result is None and self.fallback_key:
+            for model in self.FALLBACK_MODELS:
+                try:
+                    logger.warning(f"Trying fallback key with model {model}")
+                    self.model = model
+                    self.llm = self._create_llm(self.fallback_key)
+                    self._setup_agent()
+                    result = self.agent_graph.invoke({"messages": messages}, {"recursion_limit": 10})
+                    break
+                except Exception as e:
+                    last_error = e
+                    err_str = str(e).lower()
+                    if "429" in str(e) or "rate" in err_str or "insufficient" in err_str:
+                        logger.warning(f"Fallback model {model} rate limited, trying next...")
+                        continue
+                    else:
+                        raise
+
+        if result is None:
+            raise last_error or Exception("All API keys and models exhausted")
 
         all_messages = result.get("messages", [])
         answer = ""
