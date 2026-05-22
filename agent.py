@@ -161,7 +161,7 @@ class DatabaseAgent:
         self.llm = ChatOpenAI(
             openai_api_key=api_key,
             openai_api_base="https://openrouter.ai/api/v1",
-            model="openai/gpt-4o-mini",
+            model="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
             temperature=0,
             max_tokens=2000,
         )
@@ -193,7 +193,7 @@ class DatabaseAgent:
 
         messages.append(HumanMessage(content=question))
 
-        result = self.agent_graph.invoke({"messages": messages})
+        result = self.agent_graph.invoke({"messages": messages}, {"recursion_limit": 10})
 
         all_messages = result.get("messages", [])
         answer = ""
