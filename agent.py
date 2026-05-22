@@ -250,6 +250,9 @@ class DatabaseAgent:
 
         if len(self.memory) > 40:
             self.memory = self.memory[-40:]
+        # Ensure memory starts with user message (trim to even length)
+        if len(self.memory) % 2 != 0:
+            self.memory = self.memory[1:]
 
         structured_data = []
         steps = []

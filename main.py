@@ -65,7 +65,7 @@ def get_or_create_agent(conversation_id: Optional[str] = None) -> tuple:
 async def lifespan(app):
     logger.info("AI Database Chatbot v3.0 starting up...")
     logger.info("MCP tools available: 25+")
-    logger.info("Agent: LangGraph ReAct with GPT-4o-mini via OpenRouter")
+    logger.info("Agent: LangGraph ReAct via OpenRouter (free models with fallback)")
     logger.info("Multi-step orchestration enabled")
     yield
     _agent_instances.clear()

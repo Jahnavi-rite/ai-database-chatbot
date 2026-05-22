@@ -88,6 +88,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState(null);
+  const conversationIdRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -106,12 +107,13 @@ function App() {
     try {
       const response = await axios.post(`${API_URL}/chat`, {
         question: textToSend,
-        conversation_id: conversationId,
+        conversation_id: conversationIdRef.current,
       });
 
       const data = response.data;
 
-      if (data.conversation_id && !conversationId) {
+      if (data.conversation_id) {
+        conversationIdRef.current = data.conversation_id;
         setConversationId(data.conversation_id);
       }
 

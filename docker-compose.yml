@@ -6,6 +6,7 @@ services:
     environment:
       DATABASE_URL: ${DOCKER_DATABASE_URL}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?Set OPENROUTER_API_KEY in .env or environment}
+      OPENROUTER_FALLBACK_KEY: ${OPENROUTER_FALLBACK_KEY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
