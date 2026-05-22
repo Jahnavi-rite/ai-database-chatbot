@@ -67,8 +67,19 @@ def _build_args_model(tool_name: str, schema: dict) -> type:
 
     fields = {}
     for prop_name, prop_schema in properties.items():
-        json_type = prop_schema.get("type", "string")
-        python_type = _TYPE_MAP.get(json_type, str)
+        # Handle anyOf (Optional types like {"anyOf": [{"type": "integer"}, {"type": "null"}]})
+        if "anyOf" in prop_schema:
+            for option in prop_schema["anyOf"]:
+                if option.get("type") != "null":
+                    json_type = option.get("type", "string")
+                    python_type = _TYPE_MAP.get(json_type, str)
+                    break
+            else:
+                python_type = str
+        else:
+            json_type = prop_schema.get("type", "string")
+            python_type = _TYPE_MAP.get(json_type, str)
+
         description = prop_schema.get("description", "")
 
         if prop_name in required_fields:
@@ -159,7 +170,7 @@ class DatabaseAgent:
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY not set in environment")
 
-        self.model = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+        self.model = "openai/gpt-oss-20b:free"
         self.llm = self._create_llm(self.api_key)
 
         self.tools = MCPToolWrapper().get_langchain_tools()
