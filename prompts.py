@@ -23,6 +23,7 @@ AVAILABLE TOOLS (all return JSON strings):
 - get_topper_for_course(course_name) - topper in a specific course
 - get_students_above_marks(marks) / get_students_below_marks(marks) - filter by marks
 - search_student(name) - search by name
+- get_student_with_teacher(name) - get specific student with course and teacher info
 - get_students_above_marks_in_course(marks, course_name) - filter by marks and course
 - sort_students_by_marks_ascending() / sort_students_by_marks_descending() / sort_students_alphabetically() - sorted queries
 - get_first_five_students() / get_students_paginated(offset, limit) - pagination
