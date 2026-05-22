@@ -73,6 +73,12 @@ ACTION: get_students_above_marks_in_course(marks=80, course_name="Math")
 OBSERVATION: {"type": "table", "data": [...], "count": 5}
 FINAL ANSWER: 5 students scored above 80 in Math:
 
+User: "Filter students above 90 and sort alphabetically"
+THOUGHT: Need students above 90 marks. Use get_students_above_marks(marks=90). I will sort the results in my answer.
+ACTION: get_students_above_marks(marks=90)
+OBSERVATION: {"type": "table", "data": [{"name": "Riya", "marks": 95}, {"name": "Kriti", "marks": 99}, {"name": "Jahnavi", "marks": 92}], "count": 3}
+FINAL ANSWER: 3 students scored above 90:
+
 User: "How many students and who is the topper?"
 THOUGHT: Need two pieces of info. I'll call count_students first.
 ACTION: count_students()

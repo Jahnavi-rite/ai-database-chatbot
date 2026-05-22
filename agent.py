@@ -209,6 +209,17 @@ class DatabaseAgent:
                     answer = msg.content
                     break
 
+        # Post-process: if answer is raw JSON, extract a summary
+        if answer and answer.strip().startswith("{") and answer.strip().endswith("}"):
+            try:
+                parsed = json.loads(answer)
+                if "count" in parsed and "title" in parsed:
+                    count = parsed["count"]
+                    title = parsed["title"]
+                    answer = f"{count} results for {title}:"
+            except json.JSONDecodeError:
+                pass
+
         self.memory.append({"role": "user", "content": question})
         self.memory.append({"role": "assistant", "content": answer})
 
