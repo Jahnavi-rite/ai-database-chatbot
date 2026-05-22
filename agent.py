@@ -154,22 +154,27 @@ class DatabaseAgent:
     """Multi-step agentic framework for database queries using LangGraph."""
 
     def __init__(self):
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if not api_key:
+        self.api_key = os.getenv("OPENROUTER_API_KEY")
+        self.fallback_key = os.getenv("OPENROUTER_FALLBACK_KEY")
+        if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY not set in environment")
 
-        self.llm = ChatOpenAI(
-            openai_api_key=api_key,
-            openai_api_base="https://openrouter.ai/api/v1",
-            model="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-            temperature=0,
-            max_tokens=2000,
-        )
+        self.model = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+        self.llm = self._create_llm(self.api_key)
 
         self.tools = MCPToolWrapper().get_langchain_tools()
         self.memory: List[Dict[str, str]] = []
         self.agent_graph = None
         self._setup_agent()
+
+    def _create_llm(self, api_key: str) -> ChatOpenAI:
+        return ChatOpenAI(
+            openai_api_key=api_key,
+            openai_api_base="https://openrouter.ai/api/v1",
+            model=self.model,
+            temperature=0,
+            max_tokens=2000,
+        )
 
     def _setup_agent(self):
         """Create the LangGraph agent with tools and system prompt."""
@@ -193,7 +198,16 @@ class DatabaseAgent:
 
         messages.append(HumanMessage(content=question))
 
-        result = self.agent_graph.invoke({"messages": messages}, {"recursion_limit": 10})
+        try:
+            result = self.agent_graph.invoke({"messages": messages}, {"recursion_limit": 10})
+        except Exception as e:
+            if self.fallback_key and ("429" in str(e) or "rate" in str(e).lower()):
+                logger.warning("Primary API key rate limited, switching to fallback key")
+                self.llm = self._create_llm(self.fallback_key)
+                self._setup_agent()
+                result = self.agent_graph.invoke({"messages": messages}, {"recursion_limit": 10})
+            else:
+                raise
 
         all_messages = result.get("messages", [])
         answer = ""
