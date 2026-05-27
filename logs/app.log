@@ -1,0 +1,110 @@
+2026-05-26 16:37:19,015 | ERROR   | auth.seed:34 | Error seeding users: (psycopg2.errors.UndefinedColumn) column users.hashed_password does not exist
+LINE 1: ...id AS users_id, users.username AS users_username, users.hash...
+                                                             ^
+
+[SQL: SELECT users.id AS users_id, users.username AS users_username, users.hashed_password AS users_hashed_password, users.role AS users_role, users.created_at AS users_created_at 
+FROM users 
+WHERE users.username = %(username_1)s 
+ LIMIT %(param_1)s]
+[parameters: {'username_1': 'admin', 'param_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-05-26 16:38:32,548 | DEBUG   | passlib.handlers.bcrypt:625 | detected 'bcrypt' backend, version '4.0.1'
+2026-05-26 16:38:32,549 | DEBUG   | passlib.handlers.bcrypt:406 | 'bcrypt' backend lacks $2$ support, enabling workaround
+2026-05-26 16:38:32,786 | DEBUG   | auth.utils:13 | Password hashed successfully
+2026-05-26 16:38:32,787 | INFO    | auth.seed:29 | Seeded user: admin (role=admin)
+2026-05-26 16:38:33,007 | DEBUG   | auth.utils:13 | Password hashed successfully
+2026-05-26 16:38:33,008 | INFO    | auth.seed:29 | Seeded user: user (role=user)
+2026-05-26 16:38:33,010 | INFO    | auth.seed:31 | User seeding complete
+2026-05-26 17:15:07,500 | DEBUG   | auth.seed:21 | User 'admin' already exists, skipping
+2026-05-26 17:15:07,501 | DEBUG   | auth.seed:21 | User 'user' already exists, skipping
+2026-05-26 17:15:07,502 | INFO    | auth.seed:31 | User seeding complete
+2026-05-26 17:20:22,837 | DEBUG   | auth.seed:21 | User 'admin' already exists, skipping
+2026-05-26 17:20:22,838 | DEBUG   | auth.seed:21 | User 'user' already exists, skipping
+2026-05-26 17:20:22,838 | INFO    | auth.seed:31 | User seeding complete
+2026-05-26 17:20:22,844 | INFO    | main:94 | Initializing DatabaseAgent for conversation 57a987af-c570-4a72-89a2-d9153f1410c9 (role=admin)
+2026-05-26 17:20:23,870 | DEBUG   | mcp.server.lowlevel.server:162 | Initializing server 'Student Database MCP Server'
+2026-05-26 17:20:23,870 | DEBUG   | mcp.server.lowlevel.server:439 | Registering handler for ListToolsRequest
+2026-05-26 17:20:23,870 | DEBUG   | mcp.server.lowlevel.server:519 | Registering handler for CallToolRequest
+2026-05-26 17:20:23,870 | DEBUG   | mcp.server.lowlevel.server:301 | Registering handler for ListResourcesRequest
+2026-05-26 17:20:23,870 | DEBUG   | mcp.server.lowlevel.server:336 | Registering handler for ReadResourceRequest
+2026-05-26 17:20:23,870 | DEBUG   | mcp.server.lowlevel.server:263 | Registering handler for PromptListRequest
+2026-05-26 17:20:23,870 | DEBUG   | mcp.server.lowlevel.server:285 | Registering handler for GetPromptRequest
+2026-05-26 17:20:23,870 | DEBUG   | mcp.server.lowlevel.server:321 | Registering handler for ListResourceTemplatesRequest
+2026-05-26 17:20:23,917 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 17:20:23,931 | INFO    | agent:199 | Agent created for role=admin with 37 tools (full access)
+2026-05-26 17:20:23,988 | INFO    | main:96 | Agent ready with 37 tools (role=admin)
+2026-05-26 17:20:23,989 | WARNING | main:83 | Role mismatch for conversation 57a987af-c570-4a72-89a2-d9153f1410c9: cached=admin, requested=user. Creating new agent.
+2026-05-26 17:20:23,989 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 17:20:24,001 | INFO    | agent:203 | Agent created for role=user with 29 tools (read-only, 8 write tools blocked)
+2026-05-26 17:20:24,042 | INFO    | main:86 | New agent for role=user with 29 tools (conversation 44361d2c-cc4e-4f62-9102-5a08aa96b161)
+2026-05-26 17:54:11,326 | DEBUG   | auth.seed:21 | User 'admin' already exists, skipping
+2026-05-26 17:54:11,330 | DEBUG   | auth.seed:21 | User 'user' already exists, skipping
+2026-05-26 17:54:11,330 | INFO    | auth.seed:31 | User seeding complete
+2026-05-26 17:54:11,337 | INFO    | main:94 | Initializing DatabaseAgent for conversation 8b3dfa6b-4ccc-41b9-b14e-da01ff643726 (role=admin)
+2026-05-26 17:54:12,939 | DEBUG   | mcp.server.lowlevel.server:162 | Initializing server 'Student Database MCP Server'
+2026-05-26 17:54:12,940 | DEBUG   | mcp.server.lowlevel.server:439 | Registering handler for ListToolsRequest
+2026-05-26 17:54:12,940 | DEBUG   | mcp.server.lowlevel.server:519 | Registering handler for CallToolRequest
+2026-05-26 17:54:12,940 | DEBUG   | mcp.server.lowlevel.server:301 | Registering handler for ListResourcesRequest
+2026-05-26 17:54:12,940 | DEBUG   | mcp.server.lowlevel.server:336 | Registering handler for ReadResourceRequest
+2026-05-26 17:54:12,940 | DEBUG   | mcp.server.lowlevel.server:263 | Registering handler for PromptListRequest
+2026-05-26 17:54:12,940 | DEBUG   | mcp.server.lowlevel.server:285 | Registering handler for GetPromptRequest
+2026-05-26 17:54:12,940 | DEBUG   | mcp.server.lowlevel.server:321 | Registering handler for ListResourceTemplatesRequest
+2026-05-26 17:54:13,007 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 17:54:13,025 | INFO    | agent:199 | Agent created for role=admin with 37 tools (full access)
+2026-05-26 17:54:13,099 | INFO    | main:96 | Agent ready with 37 tools (role=admin)
+2026-05-26 17:54:13,099 | INFO    | main:94 | Initializing DatabaseAgent for conversation 5a5d669b-4a8f-4922-a5a7-9ea4310a8f92 (role=user)
+2026-05-26 17:54:13,100 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 17:54:13,116 | INFO    | agent:203 | Agent created for role=user with 29 tools (read-only, 8 write tools blocked)
+2026-05-26 17:54:13,180 | INFO    | main:96 | Agent ready with 29 tools (role=user)
+2026-05-26 17:54:13,181 | WARNING | main:83 | Role mismatch for conversation 8b3dfa6b-4ccc-41b9-b14e-da01ff643726: cached=admin, requested=user. Creating new agent.
+2026-05-26 17:54:13,181 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 17:54:13,196 | INFO    | agent:203 | Agent created for role=user with 29 tools (read-only, 8 write tools blocked)
+2026-05-26 17:54:13,250 | INFO    | main:86 | New agent for role=user with 29 tools (conversation d8ac0e24-f1d0-4c49-ab2f-9ff492e9f815)
+2026-05-26 20:57:15,348 | DEBUG   | auth.seed:21 | User 'admin' already exists, skipping
+2026-05-26 20:57:15,349 | DEBUG   | auth.seed:21 | User 'user' already exists, skipping
+2026-05-26 20:57:15,350 | INFO    | auth.seed:31 | User seeding complete
+2026-05-26 20:57:15,360 | INFO    | main:91 | Creating new DatabaseAgent for user=admin role=admin conversation=014133f4-979d-467d-8d29-2653d8c86fe3
+2026-05-26 20:57:18,100 | DEBUG   | mcp.server.lowlevel.server:162 | Initializing server 'Student Database MCP Server'
+2026-05-26 20:57:18,101 | DEBUG   | mcp.server.lowlevel.server:439 | Registering handler for ListToolsRequest
+2026-05-26 20:57:18,101 | DEBUG   | mcp.server.lowlevel.server:519 | Registering handler for CallToolRequest
+2026-05-26 20:57:18,101 | DEBUG   | mcp.server.lowlevel.server:301 | Registering handler for ListResourcesRequest
+2026-05-26 20:57:18,101 | DEBUG   | mcp.server.lowlevel.server:336 | Registering handler for ReadResourceRequest
+2026-05-26 20:57:18,101 | DEBUG   | mcp.server.lowlevel.server:263 | Registering handler for PromptListRequest
+2026-05-26 20:57:18,101 | DEBUG   | mcp.server.lowlevel.server:285 | Registering handler for GetPromptRequest
+2026-05-26 20:57:18,101 | DEBUG   | mcp.server.lowlevel.server:321 | Registering handler for ListResourceTemplatesRequest
+2026-05-26 20:57:18,176 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 20:57:18,194 | INFO    | agent:199 | Agent created for role=admin with 37 tools (full access)
+2026-05-26 20:57:18,324 | INFO    | main:93 | Agent ready: 37 tools (role=admin)
+2026-05-26 20:57:18,325 | INFO    | main:91 | Creating new DatabaseAgent for user=user role=user conversation=8a223d59-c360-4422-a46e-2cabaed19ccb
+2026-05-26 20:57:18,326 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 20:57:18,350 | INFO    | agent:203 | Agent created for role=user with 29 tools (read-only, 8 write tools blocked)
+2026-05-26 20:57:18,417 | INFO    | main:93 | Agent ready: 29 tools (role=user)
+2026-05-26 20:57:18,417 | INFO    | main:91 | Creating new DatabaseAgent for user=user role=admin conversation=014133f4-979d-467d-8d29-2653d8c86fe3
+2026-05-26 20:57:18,418 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 20:57:18,437 | INFO    | agent:199 | Agent created for role=admin with 37 tools (full access)
+2026-05-26 20:57:18,524 | INFO    | main:93 | Agent ready: 37 tools (role=admin)
+2026-05-26 20:57:18,524 | DEBUG   | main:87 | Reusing agent for admin (conversation 014133f4-979d-467d-8d29-2653d8c86fe3, role=admin)
+2026-05-26 21:02:50,621 | DEBUG   | auth.seed:21 | User 'admin' already exists, skipping
+2026-05-26 21:02:50,622 | DEBUG   | auth.seed:21 | User 'user' already exists, skipping
+2026-05-26 21:02:50,623 | INFO    | auth.seed:31 | User seeding complete
+2026-05-26 21:02:50,630 | INFO    | main:91 | Creating new DatabaseAgent for user=admin role=admin conversation=1ae98bb5-a264-48f5-a951-39e1bc33c7be
+2026-05-26 21:02:51,835 | DEBUG   | mcp.server.lowlevel.server:162 | Initializing server 'Student Database MCP Server'
+2026-05-26 21:02:51,835 | DEBUG   | mcp.server.lowlevel.server:439 | Registering handler for ListToolsRequest
+2026-05-26 21:02:51,835 | DEBUG   | mcp.server.lowlevel.server:519 | Registering handler for CallToolRequest
+2026-05-26 21:02:51,836 | DEBUG   | mcp.server.lowlevel.server:301 | Registering handler for ListResourcesRequest
+2026-05-26 21:02:51,836 | DEBUG   | mcp.server.lowlevel.server:336 | Registering handler for ReadResourceRequest
+2026-05-26 21:02:51,836 | DEBUG   | mcp.server.lowlevel.server:263 | Registering handler for PromptListRequest
+2026-05-26 21:02:51,836 | DEBUG   | mcp.server.lowlevel.server:285 | Registering handler for GetPromptRequest
+2026-05-26 21:02:51,836 | DEBUG   | mcp.server.lowlevel.server:321 | Registering handler for ListResourceTemplatesRequest
+2026-05-26 21:02:51,886 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 21:02:51,901 | INFO    | agent:199 | Agent created for role=admin with 37 tools (full access)
+2026-05-26 21:02:51,971 | INFO    | main:93 | Agent ready: 37 tools (role=admin)
+2026-05-26 21:02:51,972 | INFO    | main:91 | Creating new DatabaseAgent for user=user role=user conversation=8ae842c9-c7a9-4c82-b93b-90c4f431ce2a
+2026-05-26 21:02:51,972 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 21:02:51,985 | INFO    | agent:203 | Agent created for role=user with 29 tools (read-only, 8 write tools blocked)
+2026-05-26 21:02:52,028 | INFO    | main:93 | Agent ready: 29 tools (role=user)
+2026-05-26 21:02:52,030 | INFO    | main:91 | Creating new DatabaseAgent for user=user role=user conversation=1ae98bb5-a264-48f5-a951-39e1bc33c7be
+2026-05-26 21:02:52,032 | DEBUG   | asyncio:626 | Using proactor: IocpProactor
+2026-05-26 21:02:52,064 | INFO    | agent:203 | Agent created for role=user with 29 tools (read-only, 8 write tools blocked)
+2026-05-26 21:02:52,111 | INFO    | main:93 | Agent ready: 29 tools (role=user)
+2026-05-26 21:02:52,112 | DEBUG   | main:87 | Reusing agent for user (conversation 8ae842c9-c7a9-4c82-b93b-90c4f431ce2a, role=user)

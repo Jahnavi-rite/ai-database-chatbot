@@ -3,9 +3,43 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
+// ==========================================
+// AXIOS INSTANCE WITH JWT INTERCEPTOR
+// ==========================================
+
+const api = axios.create({ baseURL: API_URL });
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.reload();
+    }
+    return Promise.reject(err);
+  }
+);
+
+// ==========================================
+// HELPERS
+// ==========================================
+
 function formatTime(date) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
+
+// ==========================================
+// AVATARS
+// ==========================================
 
 function UserAvatar() {
   return (
@@ -40,6 +74,10 @@ function AssistantAvatar() {
     </svg>
   );
 }
+
+// ==========================================
+// COPY BUTTON
+// ==========================================
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
@@ -83,7 +121,97 @@ function CopyButton({ text }) {
   );
 }
 
-function App() {
+// ==========================================
+// LOGIN PAGE
+// ==========================================
+
+function LoginPage({ onLogin }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API_URL}/auth/login`, { username, password });
+      const data = res.data;
+      localStorage.setItem("token", data.access_token);
+      localStorage.setItem("user", JSON.stringify({ username: data.username, role: data.role }));
+      onLogin(data);
+    } catch (err) {
+      setError(err.response?.data?.detail || "Login failed. Check credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-logo">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect width="48" height="48" rx="12" fill="url(#loginGrad)" />
+            <circle cx="24" cy="20" r="7" fill="#fff" opacity="0.9" />
+            <path d="M13 38c0-6.075 4.925-11 11-11s11 4.925 11 11" fill="#fff" opacity="0.6" />
+            <defs>
+              <linearGradient id="loginGrad" x1="0" y1="0" x2="48" y2="48">
+                <stop offset="0%" stopColor="#6366f1" />
+                <stop offset="100%" stopColor="#4f46e5" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1>AI Database Chatbot</h1>
+        <p className="login-subtitle">Sign in to query the database</p>
+
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="input-group">
+            <label htmlFor="username">Username</label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter username"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="input-group">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              required
+            />
+          </div>
+
+          {error && <div className="login-error">{error}</div>}
+
+          <button type="submit" className="login-button" disabled={loading}>
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
+
+        <div className="login-hint">
+          <p>Demo: <code>admin / admin123</code> or <code>user / user123</code></p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// MAIN APP (authenticated)
+// ==========================================
+
+function ChatApp({ user, onLogout }) {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -105,9 +233,10 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/chat`, {
+      const response = await api.post("/chat", {
         question: textToSend,
         conversation_id: conversationIdRef.current,
+        role: user.role,
       });
 
       const data = response.data;
@@ -127,7 +256,6 @@ function App() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
-      console.error("Chat error:", err);
       const errorMsg = err.response?.data?.detail || err.message || "Failed to connect to server";
       setMessages((prev) => [
         ...prev,
@@ -267,6 +395,10 @@ function App() {
             <span className="status-dot"></span>
             Database Connected
           </div>
+          <div className="user-badge">
+            <span className={`user-role-tag ${user.role === "admin" ? "role-admin" : "role-user"}`}>{user.role}</span>
+            <span className="user-name">{user.username}</span>
+          </div>
           {conversationId && (
             <button
               className="new-chat-button"
@@ -276,6 +408,9 @@ function App() {
               New Chat
             </button>
           )}
+          <button className="logout-button" onClick={onLogout} aria-label="Sign out">
+            Sign Out
+          </button>
         </div>
       </header>
 
@@ -300,9 +435,15 @@ function App() {
                 <button className="suggestion-card" onClick={() => askChatbot("How many students are enrolled per course?")} aria-label="Ask: Students enrolled per course">
                   Students enrolled per course
                 </button>
-                <button className="suggestion-card" onClick={() => askChatbot("Add a student named Sam with 92 marks in course 1")} aria-label="Ask: Add a student named Sam">
-                  Add Sam with 92 marks to course 1
-                </button>
+                {user.role === "admin" ? (
+                  <button className="suggestion-card" onClick={() => askChatbot("Add a student named Sam with 92 marks in course 1")} aria-label="Ask: Add a student named Sam">
+                    Add Sam with 92 marks to course 1
+                  </button>
+                ) : (
+                  <button className="suggestion-card" onClick={() => askChatbot("Show students with their teachers")} aria-label="Ask: Students with teachers">
+                    Students with teachers
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -378,6 +519,33 @@ function App() {
       </div>
     </div>
   );
+}
+
+// ==========================================
+// ROOT — login check + render
+// ==========================================
+
+function App() {
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  const handleLogin = (data) => {
+    setUser({ username: data.username, role: data.role });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  return <ChatApp key={user.username} user={user} onLogout={handleLogout} />;
 }
 
 export default App;

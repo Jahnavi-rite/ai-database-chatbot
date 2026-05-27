@@ -14,9 +14,20 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import StructuredTool
 from langchain_core.messages import HumanMessage, AIMessage
 
-from prompts import AGENT_SYSTEM_PROMPT
+from prompts import AGENT_SYSTEM_PROMPT, READONLY_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
+
+WRITE_TOOL_NAMES = {
+    "add_student",
+    "update_student_marks",
+    "update_student_course",
+    "delete_student_by_id",
+    "add_teacher",
+    "delete_teacher_by_id",
+    "add_course",
+    "delete_course_by_id",
+}
 
 
 # ==========================================
@@ -171,16 +182,26 @@ class DatabaseAgent:
         "arcee-ai/trinity-large-thinking:free",
     ]
 
-    def __init__(self):
+    def __init__(self, role: str = "admin"):
         self.api_key = os.getenv("OPENROUTER_API_KEY")
         self.fallback_key = os.getenv("OPENROUTER_FALLBACK_KEY")
         if not self.api_key:
             raise ValueError("OPENROUTER_API_KEY not set in environment")
 
+        self.role = role
         self.model = self.FALLBACK_MODELS[0]
         self.llm = self._create_llm(self.api_key)
 
-        self.tools = MCPToolWrapper().get_langchain_tools()
+        all_tools = MCPToolWrapper().get_langchain_tools()
+        if role == "admin":
+            self.tools = all_tools
+            self.system_prompt = AGENT_SYSTEM_PROMPT
+            logger.info(f"Agent created for role=admin with {len(self.tools)} tools (full access)")
+        else:
+            self.tools = [t for t in all_tools if t.name not in WRITE_TOOL_NAMES]
+            self.system_prompt = READONLY_SYSTEM_PROMPT
+            logger.info(f"Agent created for role={role} with {len(self.tools)} tools (read-only, {len(all_tools) - len(self.tools)} write tools blocked)")
+
         self.memory: List[Dict[str, str]] = []
         self.agent_graph = None
         self._setup_agent()
@@ -199,7 +220,7 @@ class DatabaseAgent:
         self.agent_graph = create_react_agent(
             model=self.llm,
             tools=self.tools,
-            prompt=AGENT_SYSTEM_PROMPT,
+            prompt=self.system_prompt,
         )
 
     def run(self, question: str) -> Dict[str, Any]:
